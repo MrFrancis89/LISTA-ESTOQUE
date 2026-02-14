@@ -118,9 +118,6 @@
         .btn-nav { width: 38px; height: 38px; border-radius: 50%; background-color: var(--card); color: var(--accent); border: 1px solid var(--border); font-size: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
         #status-save { text-align: right; font-size: 8px; color: var(--btn-green); margin-top: 4px; opacity: 0; transition: opacity 0.3s; }
 
-        @keyframes pulso-gravando { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        .mic-ativo { animation: pulso-gravando 1.5s infinite; background-color: var(--btn-danger) !important; color: white !important;}
-
         #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { background: #333333; color: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-size: 13px; font-weight: bold; border: 1px solid #555; opacity: 0; animation: fadeToast 0.3s forwards; }
         body.light-mode .toast { background: #111827; }
@@ -162,10 +159,9 @@
         </div>
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 10px 0;">
         <div class="input-group">
-            <div style="position: relative;">
+            <div>
                 <label>Produto</label>
-                <input type="text" id="novoProduto" placeholder="Item" oninput="autoPreencherUnidade()" style="padding-right: 35px;">
-                <div id="btn-mic" onclick="iniciarReconhecimentoVoz()" style="position: absolute; right: 4px; bottom: 4px; font-size: 16px; cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">🎙️</div>
+                <input type="text" id="novoProduto" placeholder="Item" oninput="autoPreencherUnidade()">
             </div>
             <div>
                 <label>Qtd</label>
@@ -515,77 +511,6 @@
             }
         }
 
-        function pararEfeitoGravacao() {
-            var btnMic = document.getElementById("btn-mic");
-            var inputProduto = document.getElementById("novoProduto");
-            btnMic.classList.remove("mic-ativo"); btnMic.innerText = "🎙️"; inputProduto.placeholder = "Item"; 
-        }
-
-        // ==========================================
-        // MICROFONE CORRIGIDO (LIVRE DE CONFLITO DE ÁUDIO)
-        // ==========================================
-        function iniciarReconhecimentoVoz() {
-            // Vibra no Android, mas NÃO roda a função de áudio para não travar o microfone da Apple
-            if (navigator.vibrate) { navigator.vibrate(15); } 
-            
-            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) { mostrarAlertaElegante("Seu navegador não suporta voz.\nTente acessar pelo Safari ou Google Chrome."); return; }
-            
-            var recognition = new SpeechRecognition();
-            recognition.lang = 'pt-BR'; 
-            recognition.continuous = false; 
-            recognition.interimResults = false;
-
-            var btnMic = document.getElementById("btn-mic");
-            var inputProduto = document.getElementById("novoProduto");
-            
-            btnMic.classList.add("mic-ativo"); 
-            btnMic.innerText = "🎧"; 
-            inputProduto.placeholder = "🗣️ Fale agora..."; 
-            inputProduto.value = ""; 
-
-            recognition.onerror = function(event) {
-                pararEfeitoGravacao();
-                if(event.error === 'not-allowed') {
-                    mostrarAlertaElegante("🚫 Microfone Bloqueado!\n\nVerifique se a página tem o cadeado de segurança (HTTPS) ou se o navegador tem permissão nas configurações.");
-                } else if(event.error === 'network') {
-                    mostrarAlertaElegante("📶 Erro de Rede!\n\nO reconhecimento de voz da Apple/Google precisa de internet para traduzir o que você diz.");
-                } else if(event.error !== 'no-speech') { 
-                    mostrarToast("Erro na voz: " + event.error); 
-                }
-            };
-
-            recognition.onresult = function(event) {
-                // Toca o som elegante só DEPOIS que ele terminar de escutar
-                darFeedback();
-                var fala = event.results[0][0].transcript.toLowerCase();
-                pararEfeitoGravacao(); processarVoz(fala);
-            };
-
-            recognition.onend = function() { pararEfeitoGravacao(); };
-            
-            try { recognition.start(); } catch(e) { pararEfeitoGravacao(); mostrarToast("Erro ao iniciar a gravação."); }
-        }
-
-        function processarVoz(fala) {
-            fala = fala.replace(/^(adicionar|colocar|comprar|preciso de)\s+/i, '');
-            var qtd = ""; var unid = "";
-            var numerosStr = {"um": "1", "uma": "1", "dois": "2", "duas": "2", "três": "3", "tres": "3", "quatro": "4", "cinco": "5", "seis": "6", "meio": "1/2", "meia": "1/2"};
-            var unidadesStr = {"quilos": "kg", "quilo": "kg", "kg": "kg", "gramas": "g", "grama": "g", "unidades": "uni", "unidade": "uni", "pacotes": "pct", "pacote": "pct", "caixas": "cx", "caixa": "cx", "fardos": "bld", "fardo": "bld"};
-            var palavras = fala.split(" "); var produtoWords = [];
-            for (var i = 0; i < palavras.length; i++) {
-                var p = palavras[i].toLowerCase();
-                if (unidadesStr[p] && !unid) { unid = unidadesStr[p]; continue; }
-                if ((!isNaN(p) || numerosStr[p]) && !qtd) { qtd = isNaN(p) ? numerosStr[p] : p; continue; }
-                if (p === "de" && (unid || qtd) && i > 0 && (unidadesStr[palavras[i-1]] || !isNaN(palavras[i-1]) || numerosStr[palavras[i-1]])) { continue; }
-                produtoWords.push(palavras[i]);
-            }
-            var produto = produtoWords.join(" ");
-            if (produto.length > 0) produto = produto.charAt(0).toUpperCase() + produto.slice(1);
-            document.getElementById("novoProduto").value = produto;
-            if (qtd) document.getElementById("novoQtd").value = qtd;
-            if (unid) { document.getElementById("novoUnidade").value = unid; } else { autoPreencherUnidade(); }
-        }
         iniciarApp();
     </script>
 </body>
