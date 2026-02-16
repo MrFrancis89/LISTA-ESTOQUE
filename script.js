@@ -369,3 +369,14 @@ function autoPreencherUnidade() {
 }
 
 iniciarApp();
+const URL_GOOGLE = https: "//script.google.com/macros/s/AKfycbwWixYODxgs6K-HUBdQGxXi7tCLxgksj4C5oMcb_H3wVeH5hNWiF5zmpFkwyGwqh1tD/exec";
+
+function fazerBackupNuvem() {
+    const dados = localStorage.getItem("estoqueDados_v3");
+    if (!dados) return mostrarToast("Sem dados!");
+    mostrarToast("Nuvem...");
+    fetch(URL_GOOGLE, { method: 'POST', mode: 'no-cors', body: dados })
+    .then(() => mostrarToast("Backup na Planilha! ✅"))
+    .catch(() => mostrarToast("Erro! ❌"));
+}
+
